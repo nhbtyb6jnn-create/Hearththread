@@ -1,0 +1,38 @@
+"use client";
+
+import HearthStoryStudio from "@/components/HearthStoryStudio";
+import { createClient } from "@/lib/supabase/client";
+
+export default function StudioPage() {
+  const supabase = createClient();
+
+  async function handleSave(data: any) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase.from("stories").insert({
+      user_id: user.id,
+      original_text: data.originalText,
+      context_notes: data.contextNotes,
+      story_type: data.storyType,
+      generated_text: data.generatedText,
+    });
+
+    if (error) {
+      console.error(error);
+      alert("Could not save the story. Please try again.");
+    } else {
+      // optionally also insert into story_versions
+      alert("Story kept safely by the hearth.");
+    }
+  }
+
+  return (
+    <HearthStoryStudio
+      initialSeason="summer"
+      initialBeverage="coffee"
+      hearthLevel={3}
+      onSave={handleSave}
+    />
+  );
+}
