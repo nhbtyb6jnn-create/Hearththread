@@ -1,0 +1,8 @@
+# .env.local
+XAI_API_KEY=your_xai_key_here
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+
+npm install openai @supabase/supabase-js lucide-react clsx tailwind-merge
+# (optional but recommended) npx shadcn@latest init  and add button, textarea, select, card
+
