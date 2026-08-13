@@ -1,0 +1,72 @@
+-- Enable UUID extension if not already
+create extension if not exists "uuid-ossp";
+
+-- Profiles (extends Supabase auth.users)
+create table public.profiles (
+  id uuid references auth.users on delete cascade primary key,
+  display_name text,
+  preferred_beverage text check (preferred_beverage in ('coffee', 'tea', 'either')) default 'either',
+  cultural_notes text,                     -- free-form lineage / heritage hints
+  hearth_level integer default 1,          -- mild gamification progress
+  scene_prefs jsonb default '{}'::jsonb,   -- e.g. {season: "summer", animals: ["dog"], etc.}
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Simple family members (flat list for MVP; relationships can come later)
+create table public.people (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  name text not null,
+  relationship text,                       -- e.g. "maternal grandmother"
+  birth_year integer,
+  notes text,
+  created_at timestamptz default now()
+);
+
+-- Stories
+create table public.stories (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  person_id uuid references public.people(id) on delete set null,
+  title text,
+  original_text text not null,
+  story_type text not null,                -- fireside | kitchen | bedtime | chronicle
+  generated_text text,
+  context_notes text,                      -- user notes: "keep the year exact", etc.
+  metadata jsonb default '{}'::jsonb,      -- length preference, tone tweaks, etc.
+  is_favorite boolean default false,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Optional: simple progress / hearth evolution log (for gamification)
+create table public.hearth_events (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  event_type text not null,                -- "story_created", "person_added", "season_shift", etc.
+  details jsonb,
+  created_at timestamptz default now()
+);
+
+-- Indexes
+create index stories_user_id_idx on public.stories(user_id);
+create index people_user_id_idx on public.people(user_id);
+
+-- RLS policies (basic – tighten later)
+alter table public.profiles enable row level security;
+alter table public.people enable row level security;
+alter table public.stories enable row level security;
+alter table public.hearth_events enable row level security;
+
+create policy "Users can manage own profile" on public.profiles
+  for all using (auth.uid() = id);
+
+create policy "Users can manage own people" on public.people
+  for all using (auth.uid() = user_id);
+
+create policy "Users can manage own stories" on public.stories
+  for all using (auth.uid() = user_id);
+
+create policy "Users can manage own hearth events" on public.hearth_events
+  for all using (auth.uid() = user_id);
